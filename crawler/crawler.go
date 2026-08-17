@@ -114,7 +114,7 @@ func (e *Engine) Crawl(domain string) {
 
 	c.Limit(&colly.LimitRule{
 		DomainGlob:  "*" + domain + "*",
-		Parallelism: 8,
+		Parallelism: 10,
 	})
 
 	c.OnHTML("a[href]", func(el *colly.HTMLElement) {

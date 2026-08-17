@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
 )
 
@@ -44,6 +45,40 @@ func (e *Engine) processPage(el *colly.HTMLElement) {
 	el.DOM.Find("script, style, nav, footer, header").Remove()
 
 	mainContent := el.DOM.Find("main, article, body").First()
+
+	currentURL := el.Request.URL
+	currDir := filepath.FromSlash(currentURL.Path)
+
+	mainContent.Find("a[href]").Each(func(_ int, s *goquery.Selection) {
+		href, exists := s.Attr("href")
+		if !exists || strings.HasPrefix(href, "javascript:") || strings.HasPrefix(href, "mailto:") {
+			return
+		}
+
+		targetURL, err := currentURL.Parse(href)
+		if err != nil || targetURL.Host != currentURL.Host {
+			return
+		}
+
+		targetFile := filepath.Join(filepath.FromSlash(targetURL.Path), "index.md")
+
+		relPath, err := filepath.Rel(currDir, targetFile)
+		if err != nil {
+			return
+		}
+
+		relURL := filepath.ToSlash(relPath)
+
+		if targetURL.RawQuery != "" {
+			relURL += "?" + targetURL.RawQuery
+		}
+		if targetURL.Fragment != "" {
+			relURL += "#" + targetURL.Fragment
+		}
+
+		s.SetAttr("href", relURL)
+	})
+
 	htmlStr, err := mainContent.Html()
 	if err != nil {
 		return

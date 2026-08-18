@@ -11,13 +11,46 @@ import (
 	"github.com/gocolly/colly/v2"
 )
 
+type Config struct {
+	DisableDomainLock bool
+	MaxDepth          int
+}
+
+type Option func(*Config)
+
+func WithDisableDomainLock(disable bool) Option {
+	return func(c *Config) {
+		c.DisableDomainLock = disable
+	}
+}
+
+func WithMaxDepth(depth int) Option {
+	return func(c *Config) {
+		c.MaxDepth = depth
+	}
+}
+
 type Engine struct {
 	outputDir   string
 	scrapeCount int
+	config      Config
 }
 
-func NewEngine(outputDir string) *Engine {
-	return &Engine{outputDir: outputDir, scrapeCount: 0}
+func NewEngine(outputDir string, opts ...Option) *Engine {
+	cfg := Config{
+		DisableDomainLock: false,
+		MaxDepth:          0,
+	}
+
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	return &Engine{
+		outputDir:   outputDir,
+		scrapeCount: 0,
+		config:      cfg,
+	}
 }
 
 func (e *Engine) logPage(el *colly.HTMLElement) {
@@ -56,7 +89,7 @@ func (e *Engine) processPage(el *colly.HTMLElement) {
 		}
 
 		targetURL, err := currentURL.Parse(href)
-		if err != nil || targetURL.Host != currentURL.Host {
+		if err != nil || (!e.config.DisableDomainLock && targetURL.Host != currentURL.Host) {
 			return
 		}
 
@@ -106,14 +139,22 @@ func (e *Engine) processPage(el *colly.HTMLElement) {
 	_ = os.WriteFile(finalFilePath, []byte(markdown), 0644)
 }
 
-func (e *Engine) Crawl(domain string) {
-	c := colly.NewCollector(
-		colly.AllowedDomains(domain),
-		colly.Async(true),
-	)
+func (e *Engine) Crawl(startURL string) {
+	var collectorOpts []colly.CollectorOption
+	collectorOpts = append(collectorOpts, colly.Async(true))
+
+	if !e.config.DisableDomainLock {
+		collectorOpts = append(collectorOpts, colly.AllowedDomains(startURL))
+	}
+
+	c := colly.NewCollector(collectorOpts...)
+
+	if e.config.MaxDepth > 0 {
+		c.MaxDepth = e.config.MaxDepth
+	}
 
 	c.Limit(&colly.LimitRule{
-		DomainGlob:  "*" + domain + "*",
+		DomainGlob:  "*",
 		Parallelism: 10,
 	})
 
@@ -127,7 +168,7 @@ func (e *Engine) Crawl(domain string) {
 		e.processPage(el)
 	})
 
-	c.Visit("https://" + domain)
+	c.Visit("https://" + startURL)
 
 	c.Wait()
 }

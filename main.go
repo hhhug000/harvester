@@ -1,15 +1,20 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/hhhug000/harvester/crawler"
+	"github.com/hhhug000/harvester/server"
 )
 
 func main() {
-	var domain string
-	fmt.Println("Choose a domain to scrape")
-	fmt.Scan(&domain)
 	crawlerEngine := crawler.NewEngine("./output")
-	crawlerEngine.Crawl(domain)
+
+	srv, err := server.NewServer("./templates", crawlerEngine)
+	if err != nil {
+		log.Fatalf("Failed to initialize server: %v", err)
+	}
+
+	log.Println("Server listening on port 8080")
+	log.Fatal(srv.Start(":8080"))
 }

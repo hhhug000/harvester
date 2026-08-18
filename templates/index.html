@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home | Harvester</title>
+    <style>
+        :root {
+            --go-blue: #007d9c;
+            --go-blue-dark: #005a70;
+            --go-action-blue: #00a8e8;
+            --go-action-blue-hover: #008cc3;
+            --go-light-blue: #e0f2f1;
+            --go-bg: #f8f9fa;
+            --go-text: #202224;
+            --go-text-muted: #5f6368;
+            --go-border: #dce1e6;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: var(--go-text);
+            font-family: var(--font-sans);
+            font-size: 13px;
+            line-height: 1.4;
+            width: 100vw;
+            overflow-x: hidden;
+        }
+
+        .top-bar {
+            background-color: var(--go-blue);
+            color: #ffffff;
+            padding: 8px 16px;
+            border-bottom: 2px solid var(--go-blue-dark);
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #ffffff;
+            white-space: nowrap;
+        }
+
+        .crawler-form-wrapper {
+            margin-left: auto;
+        }
+
+        .control-bar {
+            display: flex;
+            align-items: center;
+            background-color: #ffffff;
+            border: 1px solid var(--go-border);
+            border-radius: 4px;
+            overflow: hidden;
+            height: 30px;
+        }
+
+        .segment {
+            display: flex;
+            align-items: center;
+            border-right: 1px solid var(--go-border);
+            height: 100%;
+            background-color: #ffffff;
+        }
+
+        .segment:last-child {
+            border-right: none;
+        }
+
+        .segment-label {
+            background-color: #f1f3f4;
+            color: var(--go-text-muted);
+            padding: 0 8px;
+            font-size: 11px;
+            font-weight: 600;
+            user-select: none;
+            white-space: nowrap;
+            border-right: 1px solid var(--go-border);
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        .segment-domain input {
+            width: 180px;
+            border: none;
+            outline: none;
+            padding: 0 8px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            color: var(--go-text);
+            height: 100%;
+        }
+
+        .segment select, 
+        .segment input[type="number"] {
+            border: none;
+            outline: none;
+            padding: 0 6px;
+            font-size: 12px;
+            font-family: var(--font-sans);
+            color: var(--go-text);
+            background-color: #ffffff;
+            cursor: pointer;
+            height: 100%;
+        }
+
+        .segment input[type="number"] {
+            width: 50px;
+            font-family: var(--font-mono);
+        }
+
+        .btn-crawl {
+            background-color: var(--go-action-blue);
+            color: #ffffff;
+            border: none;
+            padding: 0 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            height: 100%;
+            transition: background-color 0.15s ease;
+        }
+
+        .btn-crawl:hover {
+            background-color: var(--go-action-blue-hover);
+        }
+
+        .main-content {
+            width: 100%;
+            padding: 16px;
+        }
+
+        .section-header {
+            border-bottom: 1px solid var(--go-border);
+            padding-bottom: 6px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .section-header h2 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--go-text);
+        }
+
+        .meta-text {
+            font-size: 11px;
+            color: var(--go-text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .domain-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 6px;
+            list-style: none;
+        }
+
+        .domain-card {
+            background-color: var(--go-bg);
+            border: 1px solid var(--go-border);
+            border-radius: 3px;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            overflow: hidden;
+            transition: background-color 0.1s ease, border-color 0.1s ease;
+        }
+
+        .domain-card:hover {
+            background-color: #f1f8f9;
+            border-color: #b2dfdb;
+        }
+
+        .domain-link {
+            font-family: var(--font-mono);
+            color: var(--go-blue);
+            text-decoration: none;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .domain-link:hover {
+            text-decoration: underline;
+        }
+
+        .badge-root {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            padding: 1px 4px;
+            border-radius: 2px;
+            background-color: var(--go-light-blue);
+            color: var(--go-blue-dark);
+            border: 1px solid #b2dfdb;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="top-bar">
+        <div class="brand-title">
+            Harvester
+        </div>
+
+        <div class="crawler-form-wrapper">
+            <form id="crawlerForm" onsubmit="handleCrawl(event)">
+                <div class="control-bar">
+                    <div class="segment segment-domain">
+                        <span class="segment-label">https://</span>
+                        <input type="text" id="domainInput" placeholder="golang.org" required>
+                    </div>
+
+                    <div class="segment">
+                        <span class="segment-label">Lock</span>
+                        <select id="domainLock">
+                            <option value="enabled">Yes</option>
+                            <option value="disabled">No</option>
+                        </select>
+                    </div>
+
+                    <div class="segment">
+                        <span class="segment-label">Depth</span>
+                        <input type="number" id="crawlDepth" value="0" min="0" step="1" required>
+                    </div>
+
+                    <button type="submit" class="btn-crawl">Crawl</button>
+                </div>
+            </form>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="section-header">
+            <span class="meta-text" id="domainCount">{{ len .Domains }} Scraped Sites</span>
+        </div>
+
+        <ul class="domain-grid" id="domainGrid">
+            {{ range .Domains }}
+            <li class="domain-card">
+                <a href="https://{{ . }}" target="_blank" class="domain-link" title="https://{{ . }}">{{ . }}</a>
+            </li>
+            {{ else }}
+            <li class="domain-card">
+                <span class="meta-text">No domains scraped yet.</span>
+            </li>
+            {{ end }}
+        </ul>
+    </main>
+
+    <script>
+        function handleCrawl(event) {
+            event.preventDefault();
+            
+            const domain = document.getElementById('domainInput').value.trim();
+            if (!domain) return;
+
+            const lock = document.getElementById('domainLock').value;
+            const depth = document.getElementById('crawlDepth').value;
+            
+            console.log({"Domain": domain, "Lock": lock, "Depth": depth});
+        }
+    </script>
+</body>
+</html>

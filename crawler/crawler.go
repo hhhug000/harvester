@@ -2,9 +2,11 @@ package crawler
 
 import (
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/PuerkitoBio/goquery"
@@ -32,8 +34,9 @@ func WithMaxDepth(depth int) Option {
 
 type Engine struct {
 	outputDir   string
-	scrapeCount int
+	scrapeCount int64
 	config      Config
+	converter   *md.Converter
 }
 
 func NewEngine(outputDir string, opts ...Option) *Engine {
@@ -50,25 +53,15 @@ func NewEngine(outputDir string, opts ...Option) *Engine {
 		outputDir:   outputDir,
 		scrapeCount: 0,
 		config:      cfg,
+		converter:   md.NewConverter("", true, nil),
 	}
 }
 
 func (e *Engine) logPage(el *colly.HTMLElement) {
-	e.scrapeCount += 1
+	count := atomic.AddInt64(&e.scrapeCount, 1)
 	host := el.Request.URL.Host
 	path := el.Request.URL.Path
-	log.Printf("[\033[35m%d\033[0m] \033[32mScraped:\033[0m \033[36m%s\033[0m\033[33m%s\033[0m", e.scrapeCount, host, path)
-}
-
-func (e *Engine) convertHTMLtoMD(htmlStr string) (string, error) {
-	converter := md.NewConverter("", true, nil)
-
-	markdown, err := converter.ConvertString(htmlStr)
-	if err != nil {
-		return "", err
-	}
-
-	return markdown, nil
+	log.Printf("[\033[35m%d\033[0m] \033[32mScraped:\033[0m \033[36m%s\033[0m\033[33m%s\033[0m", count, host, path)
 }
 
 func (e *Engine) processPage(el *colly.HTMLElement) {
@@ -89,11 +82,20 @@ func (e *Engine) processPage(el *colly.HTMLElement) {
 		}
 
 		targetURL, err := currentURL.Parse(href)
-		if err != nil || (!e.config.DisableDomainLock && targetURL.Host != currentURL.Host) {
+		if err != nil {
 			return
 		}
 
-		targetFile := filepath.Join(filepath.FromSlash(targetURL.Path), "index.md")
+		if !e.config.DisableDomainLock && targetURL.Host != currentURL.Host {
+			return
+		}
+
+		var targetFile string
+		if targetURL.Host == currentURL.Host {
+			targetFile = filepath.Join(filepath.FromSlash(targetURL.Path), "index.md")
+		} else {
+			targetFile = filepath.Join("..", targetURL.Host, filepath.FromSlash(targetURL.Path), "index.md")
+		}
 
 		relPath, err := filepath.Rel(currDir, targetFile)
 		if err != nil {
@@ -126,12 +128,11 @@ func (e *Engine) processPage(el *colly.HTMLElement) {
 	}
 
 	dirPath := filepath.Dir(finalFilePath)
-	err = os.MkdirAll(dirPath, 0755)
-	if err != nil {
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
 		return
 	}
 
-	markdown, err := e.convertHTMLtoMD(htmlStr)
+	markdown, err := e.converter.ConvertString(htmlStr)
 	if err != nil {
 		return
 	}
@@ -139,12 +140,22 @@ func (e *Engine) processPage(el *colly.HTMLElement) {
 	_ = os.WriteFile(finalFilePath, []byte(markdown), 0644)
 }
 
-func (e *Engine) Crawl(startURL string) {
+func (e *Engine) Crawl(rawURL string) {
+	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+		rawURL = "https://" + rawURL
+	}
+
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		log.Printf("Invalid URL: %v", err)
+		return
+	}
+
 	var collectorOpts []colly.CollectorOption
 	collectorOpts = append(collectorOpts, colly.Async(true))
 
 	if !e.config.DisableDomainLock {
-		collectorOpts = append(collectorOpts, colly.AllowedDomains(startURL))
+		collectorOpts = append(collectorOpts, colly.AllowedDomains(parsedURL.Host))
 	}
 
 	c := colly.NewCollector(collectorOpts...)
@@ -155,7 +166,7 @@ func (e *Engine) Crawl(startURL string) {
 
 	c.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
-		Parallelism: 10,
+		Parallelism: 8,
 	})
 
 	c.OnHTML("a[href]", func(el *colly.HTMLElement) {
@@ -168,7 +179,6 @@ func (e *Engine) Crawl(startURL string) {
 		e.processPage(el)
 	})
 
-	c.Visit("https://" + startURL)
-
+	c.Visit(parsedURL.String())
 	c.Wait()
 }
